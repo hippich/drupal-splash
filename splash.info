@@ -1,0 +1,9 @@
+name = Splash Drupal 7
+description = Allows to show a splash page on first, daily or weekly visit.
+core = 7.x
+version = "dev-7.x"
+project = "splash"
+
+dependencies[] = colorbox
+
+files[] = splash.test

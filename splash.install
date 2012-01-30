@@ -1,0 +1,29 @@
+<?php
+
+/*
+function splash_update_6200() {
+  $ret = array();
+  
+  // Old variables
+  $redirect		= variable_get('splash_redirect', NULL);
+  $cookie			= variable_get('splash_cookie', NULL);
+  $frequency	= variable_get('splash_frequency', NULL);
+  $code				= variable_get('splash_code', NULL);
+  
+  // New variables
+  variable_set('splash_when', array(
+    'frequency' => (!is_string($frequency) || strlen($frequency) == 0) ? 'always' : $frequency,
+    'cookie' => (!is_string($cookie) || strlen($frequency) == 0) ? 'splash_cookie' : $cookie,
+  ));
+  variable_set('splash_what', array(
+    'content' => (!is_string($redirect) || strlen($redirect) == 0) ? '' : $redirect,
+  ));
+
+  // Code has been moved to Conditions module
+  if (is_string($code) && strlen($code) > 0) {
+    drupal_set_message(t('Splash - Install the conditions module to trigger the display by the PHP code you had set: %code', array('%code' => $code)));
+  }
+  
+  return $ret;
+}
+*/

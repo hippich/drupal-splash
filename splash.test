@@ -1,0 +1,41 @@
+<?php
+
+class SplashLoadTestCase extends DrupalWebTestCase {
+  
+  /*
+   * Implements getInfo()
+   */
+  public static function getInfo() {
+    return array (
+      'name' => t('Load Testing'),
+      'description' => t('Make sure the splash loads properly.'),
+      'group' => t('Splash'),
+    );
+  }
+  
+  public function setUp() {
+    // Enable the required modules
+    parent::setUp('splash', 'colorbox', 'jquery_update');
+  }
+  
+  public function _resetSplashCookie() {
+  }
+  
+  /*
+   * Test Anonymous User
+   */
+  public function testLoadAnonymous() {
+  }
+  
+  /*
+   * Test Admin User
+   */
+  public function testLoadSuperAdmin() {
+  }
+  
+  /*
+   * Test Authenicated User
+   */
+  public function testLoadUser() {
+  }
+}

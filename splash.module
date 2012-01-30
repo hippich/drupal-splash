@@ -1,0 +1,296 @@
+<?php
+
+/**
+ * Permissions
+ */
+function splash_permission() {
+  return array(
+    'administer splash' => array(
+      'title' => 'Administer Splash',
+      'description' => 'Users wih this permission can access Splash module settings.',
+      'restrict access' => TRUE),
+    'enable splash' => array(
+      'title' => 'Enable Splash',
+      'description' => 'Only user groups wih this permission can see the splash screen. It is used to disable splash for authenticated users.')
+    );
+}
+
+function splash_menu() {
+  $items = array();
+  
+  // Splash (for texts)
+  $items['splash'] = array(
+    'title' => 'Splash',
+    'page callback' => 'splash_page',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  
+  // Admin
+  $items['admin/config/user-interface/splash'] = array(
+    'title'								=> 'Splash',
+    'description'					=> t('Show a splash page before/over the actual frontpage.'),
+    'page callback'				=> 'drupal_get_form',
+    'page arguments'			=> array('splash_admin_when'),
+    'access arguments'		=> array('administer splash'),
+    'file'								=> 'splash.admin.inc',
+  );
+  
+  $items['admin/config/user-interface/splash/when'] = array(
+    'title'								=> 'When',
+    'description'					=> t('Set WHEN the splash page is displayed.'),
+    'type'								=> MENU_DEFAULT_LOCAL_TASK,
+    'access arguments'		=> array('administer splash'),
+    'weight'							=> -10,
+  );
+  
+  $items['admin/config/user-interface/splash/what'] = array(
+    'title'								=> 'What',
+    'description'					=> t('Set WHAT is displayed as the splash page.'),
+    'page arguments'			=> array('splash_admin_what'),
+    'access arguments'		=> array('administer splash'),
+    'type'								=> MENU_LOCAL_TASK,
+  );
+  
+  $items['admin/config/user-interface/splash/how'] = array(
+    'title'								=> 'How',
+    'description'					=> t('Set HOW the splash page is displayed.'),
+    'page arguments'			=> array('splash_admin_how'),
+    'access arguments'		=> array('administer splash'),
+    'type'								=> MENU_LOCAL_TASK,
+  );
+
+  return $items;
+}
+
+/*
+ * hook_init()
+ * 
+ * On page load, determines if the splash page should be displayed or not.
+ */
+function splash_init() {
+  global $base_url;
+  
+  if (function_exists('drush_verify_cli') && call_user_func('drush_verify_cli')) {
+    return;
+  }
+
+  $splash = TRUE;
+  $splash_when = variable_get('splash_when', _splash_var_defaults('when'));
+  $splash_what = variable_get('splash_what', _splash_var_defaults('what'));
+  $splash_how = variable_get('splash_how', _splash_var_defaults('how'));
+  
+  $cookie_name = (!empty($splash_when['cookie'])) ? $splash_when['cookie'] : 'splash_cookie';
+  $cookie_data = (!empty($_COOKIE[$cookie_name])) ? (is_numeric($_COOKIE[$cookie_name]) ? array('time' => $_COOKIE[$cookie_name]) : (array) unserialize($_COOKIE[$cookie_name])) : array();
+  
+  if(!isset($_GET['splash']))
+    $_GET['splash'] = '';
+    
+  if (!user_access('enable splash')) {
+    $splash = FALSE;
+    $reason = 'No permission';
+  }
+  else {
+    
+    /*** THE WHEN ***/
+    
+    // No WHAT
+    if (empty($splash_what['content']['value'])) {
+      $splash = FALSE;
+      $reason = 'No WHAT';
+    // Someone knew this special way to get around the splash :)
+    } elseif ($_GET['splash'] == 'off') {
+      $splash = FALSE;
+      $reason = 'Someone knew this special way to get around the splash';
+    // Someone knew this special way to force splash display
+    } elseif ($_GET['splash'] == 'on') {
+      $splash = TRUE;
+      $reason = 'Someone knew this special way to force splash display';
+    // We are not on the front page (cannot use drupal_is_front_page here)
+    } elseif ($_GET['q'] != drupal_get_normal_path(variable_get('site_frontpage', 'node'))) {
+      $splash = FALSE;
+      $reason = 'We are not on the front page';
+    // We come from an internal page
+    } elseif (($parsed_url = parse_url($base_url)) && stristr($_SERVER['HTTP_REFERER'], $parsed_url['host'])) {
+      $splash = FALSE;
+      $reason = 'We come from an internal page';
+    // Front page is splash page?!  
+    } elseif ($splash_how['mode'] == 'redirect' && $_GET['q'] == drupal_get_normal_path($splash_what['content']['value'])) {
+      $splash = FALSE;
+      $reason = 'Front page is splash page';  
+    } else {
+      
+      /*
+      // This was from the drupal 6 version.
+      if (module_exists('condition') && is_array($splash_when['conditions'])) {
+        $splash = condition_selection_validate($splash_when['conditions']);
+        $reason = ($splash) ? 'Conditions true' : 'Conditions false';
+      }
+      */
+      
+      // Frequency
+      if ($splash) {
+        
+        // No cookie
+        if (!isset($cookie_data['time'])) {
+          $splash = TRUE;
+          $reason = 'No cookie';        
+        } else {
+      
+          // Once
+          if ($splash_when['frequency'] == 'once') {
+            $splash = FALSE;
+            $reason = 'Once';
+          // Every day
+          } else if ($cookie_data['time'] && $splash_when['frequency'] == 'daily' && (time() - $cookie_data['time'] < 86400)) {
+            $splash = FALSE;
+            $reason = 'Every day';
+          // Every week
+          } else if ($cookie_data['time'] && $splash_when['frequency'] == 'weekly' && (time() - $cookie_data['time'] < 604800)) {
+            $splash = FALSE;
+            $reason = 'Every week';
+          // Never
+          } else if ($splash_when['frequency'] != 'always') {
+            $splash = FALSE;
+            $reason = 'Never';
+          }
+        }
+      }
+    }
+  }
+
+  // Show splash
+  if ($splash) {
+    
+    /*** THE WHAT ***/
+    // Text
+    if ($splash_what['mode'] == 'template' || $splash_what['mode'] == 'fullscreen') {
+      $url = check_url('splash');
+      
+    // Path or URL
+    } else {      
+      $paths = preg_split('/[\n\r]+/', $splash_what['content']['value']);
+      
+      // Sequence
+      if ($splash_what['mode'] == 'sequence') {
+        $last_path = isset($cookie_data['sequence']) ? $cookie_data['sequence'] : '';
+        $last_index = array_search($last_path, $paths);
+        
+        if ($last_index !== FALSE && count($paths) > $last_index + 1) {
+          $next_index = $last_index + 1;          
+        } else {
+          $next_index = 0;
+        }
+        
+        $cookie_data['sequence'] = $paths[$next_index];
+        
+      // Random
+      } else {
+        $next_index = array_rand($paths);
+      }     
+      
+      $url = check_url($paths[$next_index]);
+    }
+    
+    $cookie_data['time'] = time();
+    setcookie($cookie_name, serialize($cookie_data), time() + 31556926, '/');
+   
+    /*** THE HOW ***/
+    $size = $splash_how['size'] ? explode('x', $splash_how['size']) : FALSE;
+    
+    // Colorbox
+    if (module_exists('colorbox') && ($splash_how['mode'] == 'colorbox')) {
+      
+      $colorboxSettings = array();
+      $colorboxSettings['transition'] = "transition:'elastic'";
+      $url_parts = parse_url($url);
+            
+      // Open external URLs and templated texts in iFrame  
+      if (isset($url_parts['scheme']) || $splash_what['mode'] == 'template') {
+        $colorboxSettings['iframe'] = "iframe:'true'";
+      }
+                
+      // If the admin toolbar is displayed, we want to force this page to be loaded via iframe
+      if (module_exists('toolbar')) {
+        if (!_toolbar_is_collapsed()) {
+          $colorboxSettings['iframe'] = "iframe:'true'";
+        }
+      }
+      
+      // Set size
+      if ($size) {
+        $colorboxSettings['width'] = 'width:' . $size[0];
+        $colorboxSettings['height'] = 'height:' . $size[1];
+      }
+      
+      // Set the url
+      if (count($colorboxSettings)) {
+        $colorboxSettings['href'] = 'href:"' . url($url) . '"';
+      }
+      
+      $colorbox_loadString = implode(', ', $colorboxSettings);
+      
+      drupal_add_js('jQuery(document).ready(function(){ jQuery.colorbox({' . $colorbox_loadString . '}); });', 'inline'); 
+      
+    // New window
+    } else if ($splash_how['mode'] == 'window') {
+      $size_str = $size ? ', "width='.$size[0].',height='.$size[1].'"' : '';
+      drupal_add_js('window.onload = function() { window.open("' . url($url) . '", "splash"' . $size_str . '); }', 'inline'); 
+    
+    // Redirect
+    } else {
+      drupal_goto($url);
+    }
+  }
+}
+
+function splash_help($path, $arg) {
+  switch ($path) {
+    case 'admin/config/user-interface/splash':
+      return '<p>'. t('Please note that the splash page is never displayed in the following conditions: <ul><li>The requested page is not the front page.</li><li>The visitor returns to the frontpage from another page on the same site.</li><li>The splash page is the same as the front page.</li><li>The visitors added <code>?nosplash</code> to the URL.</li></ul>', array('!condition' => l(t('Condition'), 'http://drupal.org/project/condition'))).'</p>';
+    case 'admin/config/user-interface/splash/what':
+      return '<p>'. t('What will be displayed as splash page? You can enter multiple internal paths or full URLs to pick from either in random or in sequence mode. Or enter some text and choose if should be displayed in the site template or full screen.').'</p>';
+    case 'admin/config/user-interface/splash/how':
+      return '<p>'. t('By default, the visitor is redirected to the splash page. In that case, please remember to include a link to the frontpage on the splash page. But you can also open the page in a new window (blocked by some browsers and plug-ins) or (if you have it installed) use the fancy !colorbox.', array('!colorbox' => l(t('Colorbox'), 'http://colorpowered.com/colorbox/'))).'</p>';
+  }
+}
+
+/*
+ * This is a menu item that gets called when using the Splash>What>Content option to display 
+ * text to the screen or display text in the site template.
+ */
+function splash_page() {
+  $splash_what = variable_get('splash_what', _splash_var_defaults('what'));
+  $output = check_markup($splash_what['content']['value'], $splash_what['content']['format'], FALSE);
+  
+  if ($splash_what['mode'] == 'fullscreen') {
+    echo $output;
+    exit;
+    
+  } else {
+    return $output;
+  }
+}
+
+/*
+ * Creates empty spaces for the variables in the splash module. This is mainly 
+ * meant to prevent notice messages of undefined variables and indexes.
+ * 
+ * There are currently three different options for $type: when, what and how.
+ */
+function _splash_var_defaults($type)
+{
+  switch ($type) {
+    case 'when':
+      return array('frequency' => '', 'cookie' => '');
+      break;
+      
+    case 'how':
+      return array('mode' => '', 'size' => '');
+      break;
+      
+    case 'what':
+      return array('mode' => '', array('content' => array('value' => '', 'format' => '')));
+      break;
+  }
+}

@@ -20,44 +20,44 @@ function splash_menu() {
   
   // Splash (for texts)
   $items['splash'] = array(
-    'title' => 'Splash',
-    'page callback' => 'splash_page',
+    'title'            => 'Splash',
+    'page callback'    => 'splash_page',
     'access arguments' => array('access content'),
-    'type' => MENU_CALLBACK,
+    'type'             => MENU_CALLBACK,
   );
   
   // Admin
   $items['admin/config/user-interface/splash'] = array(
-    'title'								=> 'Splash',
-    'description'					=> t('Show a splash page before/over the actual frontpage.'),
-    'page callback'				=> 'drupal_get_form',
-    'page arguments'			=> array('splash_admin_when'),
-    'access arguments'		=> array('administer splash'),
-    'file'								=> 'splash.admin.inc',
+    'title'            => 'Splash',
+    'description'      => t('Show a splash page before/over the actual frontpage.'),
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('splash_admin_when'),
+    'access arguments' => array('administer splash'),
+    'file'             => 'splash.admin.inc',
   );
   
   $items['admin/config/user-interface/splash/when'] = array(
-    'title'								=> 'When',
-    'description'					=> t('Set WHEN the splash page is displayed.'),
-    'type'								=> MENU_DEFAULT_LOCAL_TASK,
-    'access arguments'		=> array('administer splash'),
-    'weight'							=> -10,
+    'title'            => 'When',
+    'description'      => t('Set WHEN the splash page is displayed.'),
+    'type'             => MENU_DEFAULT_LOCAL_TASK,
+    'access arguments' => array('administer splash'),
+    'weight'           => -10,
   );
   
   $items['admin/config/user-interface/splash/what'] = array(
-    'title'								=> 'What',
-    'description'					=> t('Set WHAT is displayed as the splash page.'),
-    'page arguments'			=> array('splash_admin_what'),
-    'access arguments'		=> array('administer splash'),
-    'type'								=> MENU_LOCAL_TASK,
+    'title'            => 'What',
+    'description'      => t('Set WHAT is displayed as the splash page.'),
+    'page arguments'   => array('splash_admin_what'),
+    'access arguments' => array('administer splash'),
+    'type'             => MENU_LOCAL_TASK,
   );
   
   $items['admin/config/user-interface/splash/how'] = array(
-    'title'								=> 'How',
-    'description'					=> t('Set HOW the splash page is displayed.'),
-    'page arguments'			=> array('splash_admin_how'),
-    'access arguments'		=> array('administer splash'),
-    'type'								=> MENU_LOCAL_TASK,
+    'title'            => 'How',
+    'description'      => t('Set HOW the splash page is displayed.'),
+    'page arguments'   => array('splash_admin_how'),
+    'access arguments' => array('administer splash'),
+    'type'             => MENU_LOCAL_TASK,
   );
 
   return $items;
